@@ -14,7 +14,8 @@
       background: linear-gradient(to bottom, #b3e5fc, #e0f7fa);
       color: #333;
     }
-    $1padding: 20px;
+    .container {
+      padding: 20px;
       padding-bottom: 40px;
       display: flex;
       flex-direction: column;
@@ -104,7 +105,7 @@
 
     <div class="card">
       <h2>📍 我的钓点收藏</h2>
-      <div id="map"></div>
+      <div id="map" style="height: 300px;"></div>
     </div>
 
     <div class="card">
@@ -134,67 +135,63 @@
 </div>
 
   </div>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://webapi.amap.com/maps?v=2.0&key=3965a32bb8ae0e99392472626fcd08dc"></script>
   <script>
     let map;
-    let userMarker;
-    let savedSpots = JSON.parse(localStorage.getItem('fishing_spots') || '[]');
-    let spotMarkers = [];
+let mapInitialized = false;
+let markers = [];
+let savedSpots = JSON.parse(localStorage.getItem('fishing_spots') || '[]');
 
-    function saveSpot(lat, lon, time) {
-      savedSpots.push({ lat, lon, time });
-      localStorage.setItem('fishing_spots', JSON.stringify(savedSpots));
-    }
+function saveSpot(lat, lng, time) {
+  savedSpots.push({ lat, lng, time });
+  localStorage.setItem('fishing_spots', JSON.stringify(savedSpots));
+}
 
-    function deleteSpot(index) {
-      savedSpots.splice(index, 1);
-      localStorage.setItem('fishing_spots', JSON.stringify(savedSpots));
-      map.removeLayer(spotMarkers[index]);
-      spotMarkers.splice(index, 1);
-      loadSpots();
-    }
+function deleteAndReload(index) {
+  savedSpots.splice(index, 1);
+  localStorage.setItem('fishing_spots', JSON.stringify(savedSpots));
+  loadSpots();
+}
 
-    function loadSpots() {
-      spotMarkers.forEach(marker => map.removeLayer(marker));
-      spotMarkers = [];
-      savedSpots.forEach((spot, index) => {
-        const marker = L.marker([spot.lat, spot.lon], { draggable: false }).addTo(map);
-        const popupContent = `🎣 收藏钓点<br>📍 ${spot.lat.toFixed(4)}, ${spot.lon.toFixed(4)}<br>🕒 ${spot.time}<br><button onclick="deleteSpot(${index})">🗑️ 删除</button>`;
-        marker.bindPopup(popupContent);
-        spotMarkers.push(marker);
-      });
-    }
+function loadSpots() {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+  savedSpots.forEach((spot, index) => {
+    const marker = new AMap.Marker({
+      icon: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+      position: [spot.lng, spot.lat],
+      map: map
+    });
 
-    function initMap(lat, lon) {
-      if (!map) {
-        map = L.map('map').setView([lat, lon], 13);
-        L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?style=7&x={x}&y={y}&z={z}', {
-          attribution: '&copy; 高德地图',
-          subdomains: ['webrd01', 'webrd02', 'webrd03'],
-          maxZoom: 18
-        }).addTo(map);
+    const infoWindow = new AMap.InfoWindow({
+      content: `<div style='font-size:14px;'>📍 ${spot.lat.toFixed(4)}, ${spot.lng.toFixed(4)}<br>🕒 ${spot.time}<br><button onclick="deleteAndReload(${index})">🗑️ 删除钓点</button></div>`,
+      offset: new AMap.Pixel(0, -30)
+    });
 
-        map.on('click', e => {
-          const { lat, lng } = e.latlng;
-          const now = new Date().toLocaleString();
-          const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-          const popupContent = `🎯 新钓点<br>📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}<br>🕒 ${now}`;
-          marker.bindPopup(popupContent).openPopup();
-          saveSpot(lat, lng, now);
-          loadSpots();
-        });
+    marker.on('click', () => infoWindow.open(map, marker.getPosition()));
+    markers.push(marker);
+  });
+}
 
-        loadSpots();
-      }
 
-      if (userMarker) {
-        userMarker.setLatLng([lat, lon]);
-      } else {
-        userMarker = L.marker([lat, lon], { draggable: true })
-          .addTo(map)
-          .bindPopup("📍 当前钓点（可拖动）").openPopup();
-      }
-    }
+function initMap(lat, lon) {
+  if (mapInitialized) return;
+  mapInitialized = true;
+  map = new AMap.Map('map', {
+    zoom: 13,
+    center: [lon, lat]
+  });
+
+  map.on('click', function (e) {
+    const lng = e.lnglat.lng;
+    const lat = e.lnglat.lat;
+    const time = new Date().toLocaleString();
+    saveSpot(lat, lng, time);
+    loadSpots();
+  });
+
+  loadSpots();
+}
   </script>
 <script>
 const weatherIcons = {
