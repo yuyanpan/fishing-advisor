@@ -1,0 +1,318 @@
+<!-- 修复后的 HTML，删除钓点功能优化 -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>钓鱼参谋</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #b3e5fc, #e0f7fa);
+      color: #333;
+    }
+    $1padding: 20px;
+      padding-bottom: 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 28px;
+      color: #00796b;
+      text-shadow: 1px 1px 2px #b2dfdb;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+    .data-line {
+      margin: 8px 0;
+      font-size: 18px;
+    }
+    .button {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #00796b;
+      color: white;
+      text-align: center;
+      border-radius: 12px;
+      font-size: 18px;
+      margin-top: 16px;
+      text-decoration: none;
+      transition: background 0.3s ease;
+    }
+    .button:hover {
+      background: #004d40;
+    }
+    .suggestion {
+      margin-top: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #004d40;
+      white-space: pre-line;
+    }
+    .forecast-day {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+    .forecast-day p {
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+    .forecast h2 {
+      font-size: 20px;
+      color: #00695c;
+      margin-bottom: 10px;
+    }
+    #map {
+      height: 300px;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎣 钓鱼参谋</h1>
+    <div class="card">
+      <div class="data-line" id="date"></div>
+      <div class="data-line" id="location"></div>
+      <div class="data-line" id="weather"></div>
+      <div class="data-line" id="temp"></div>
+      <div class="data-line" id="wind"></div>
+      <div class="data-line" id="pressure"></div>
+      <div class="suggestion" id="advice"></div>
+      <div class="data-line" id="dressIndex"></div>
+      <a href="#" class="button" onclick="getWeather()">🔄 刷新数据</a>
+    </div>
+
+    <div class="card forecast">
+      <h2>📆 未来三天钓鱼趋势预测</h2>
+      <div id="forecastContent"></div>
+    </div>
+
+    <div class="card">
+      <h2>📍 我的钓点收藏</h2>
+      <div id="map"></div>
+    </div>
+
+    <div class="card">
+  <h2>📘 钓鱼小百科 <button onclick="toggleContent(this)">展开</button></h2>
+  <div class="toggle-content" style="display:none">
+    <p>钓鱼不仅是一种休闲活动，更蕴含着丰富的自然知识和技巧。不同的鱼类对水温、水流、光照等条件反应不同。
+    <br>📌 鲫鱼是四季皆可垂钓的目标鱼，尤其在春秋水温适中时活跃；而夏季草鱼、青鱼较为活跃，喜食素饵和嫩草。
+    <br>🌡️ 初春气温仍低，建议选择中午时段钓鱼，采用腥味浓郁的小钩细线；入夏后应选择清晨和傍晚出钓，避开高温时段。
+    <br>🌧️ 雨后初晴的日子，水体含氧量提升，是鲤鱼、鲫鱼觅食的活跃期。
+    <br>🌕 傍晚或夜钓适合钓鲶鱼、黄颡鱼等夜行性鱼种，需注意安全防护。</p>
+  </div>
+</div>
+</div>
+
+    <div class="card">
+  <h2>🌊 不同水情适合鱼种 <button onclick="toggleContent(this)">展开</button></h2>
+  <div class="toggle-content" style="display:none">
+    <ul>
+      <li>🌾 <strong>静水（湖泊、水库边缘）</strong>：水流缓慢，适合垂钓鲫鱼、鲤鱼、草鱼。使用轻漂细线可有效观察鱼讯。</li>
+      <li>💨 <strong>微风水面</strong>：水体流动轻微，浮漂稳定，适合钓活跃鱼如草鱼、鲢鳙，尤其在夏季早晚效果较佳。</li>
+      <li>🌊 <strong>流速适中河道</strong>：水流带来新鲜水质，鱼儿活跃，鲶鱼、黄颡鱼、鳊鱼常见于此，适合使用底钓法。</li>
+      <li>🌧 <strong>雨后浑水</strong>：部分鱼类警惕性降低，如鲤鱼会沿边游动觅食，可选择香腥味浓的饵料加大诱钓。</li>
+      <li>🌫 <strong>风浪较大或水体剧变</strong>：鱼类趋于底层或躲避，建议改用钓底重铅钓法，减少漂浮干扰。</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map;
+    let userMarker;
+    let savedSpots = JSON.parse(localStorage.getItem('fishing_spots') || '[]');
+    let spotMarkers = [];
+
+    function saveSpot(lat, lon, time) {
+      savedSpots.push({ lat, lon, time });
+      localStorage.setItem('fishing_spots', JSON.stringify(savedSpots));
+    }
+
+    function deleteSpot(index) {
+      savedSpots.splice(index, 1);
+      localStorage.setItem('fishing_spots', JSON.stringify(savedSpots));
+      map.removeLayer(spotMarkers[index]);
+      spotMarkers.splice(index, 1);
+      loadSpots();
+    }
+
+    function loadSpots() {
+      spotMarkers.forEach(marker => map.removeLayer(marker));
+      spotMarkers = [];
+      savedSpots.forEach((spot, index) => {
+        const marker = L.marker([spot.lat, spot.lon], { draggable: false }).addTo(map);
+        const popupContent = `🎣 收藏钓点<br>📍 ${spot.lat.toFixed(4)}, ${spot.lon.toFixed(4)}<br>🕒 ${spot.time}<br><button onclick="deleteSpot(${index})">🗑️ 删除</button>`;
+        marker.bindPopup(popupContent);
+        spotMarkers.push(marker);
+      });
+    }
+
+    function initMap(lat, lon) {
+      if (!map) {
+        map = L.map('map').setView([lat, lon], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        map.on('click', e => {
+          const { lat, lng } = e.latlng;
+          const now = new Date().toLocaleString();
+          const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+          const popupContent = `🎯 新钓点<br>📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}<br>🕒 ${now}`;
+          marker.bindPopup(popupContent).openPopup();
+          saveSpot(lat, lng, now);
+          loadSpots();
+        });
+
+        loadSpots();
+      }
+
+      if (userMarker) {
+        userMarker.setLatLng([lat, lon]);
+      } else {
+        userMarker = L.marker([lat, lon], { draggable: true })
+          .addTo(map)
+          .bindPopup("📍 当前钓点（可拖动）").openPopup();
+      }
+    }
+  </script>
+<script>
+const weatherIcons = {
+  "晴": "☀️", "多云": "⛅", "阴": "☁️", "小雨": "🌧️", "中雨": "🌧️", "大雨": "🌧️", "雷阵雨": "🌩️", "雪": "❄️"
+};
+
+function getFishingTimeSuggestion(temp, weather) {
+  if (["小雨", "中雨", "大雨", "雷阵雨"].includes(weather)) {
+    return "建议避开降雨时段，选择雨停后或天色放晴再出钓";
+  }
+  if (temp >= 25) {
+    return "最佳时间：清晨5~8点 或 傍晚5~7点，避免中午高温";
+  }
+  if (temp >= 18 && temp < 25) {
+    return "全天时段较舒适，推荐早上7~10点、下午3~6点出钓";
+  }
+  if (temp >= 10 && temp < 18) {
+    return "早晚偏凉，推荐中午11~14点之间出钓";
+  }
+  return "温度较低，建议选择中午时段，注意保暖";
+}
+
+function getDressSuggestion(temp, weather) {
+  const umbrella = ["小雨", "中雨", "大雨", "雷阵雨"].includes(weather) ? "☔ 请携带雨具。" : "";
+  if (temp >= 28) return `👕 穿着建议：短袖+防晒帽，注意补水。${umbrella}`;
+  if (temp >= 20) return `🧥 穿着建议：薄外套+长裤，早晚微凉。${umbrella}`;
+  if (temp >= 10) return `🧣 穿着建议：夹克+长袖，适当保暖。${umbrella}`;
+  return `🧥 穿着建议：保暖外套+围巾+帽子。${umbrella}`;
+}
+
+async function getWeather() {
+  const dateElem = document.getElementById("date");
+  const locationElem = document.getElementById("location");
+  const weatherElem = document.getElementById("weather");
+  const tempElem = document.getElementById("temp");
+  const windElem = document.getElementById("wind");
+  const pressureElem = document.getElementById("pressure");
+  const adviceElem = document.getElementById("advice");
+  const forecastContent = document.getElementById("forecastContent");
+  const dressIndexElem = document.getElementById("dressIndex");
+
+  const now = new Date();
+  dateElem.innerText = `📅 日期：${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()} （星期${"日一二三四五六"[now.getDay()]}）`;
+
+  try {
+    navigator.geolocation.getCurrentPosition(async position => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      initMap(lat, lon);
+
+      const locationRes = await fetch(`https://geoapi.qweather.com/v2/city/lookup?location=${lon},${lat}&key=cdbc8afd371d4140bf33e52793fc9530`);
+      const locationData = await locationRes.json();
+      const locationId = locationData.location[0].id;
+      const locationName = `${locationData.location[0].adm2} · ${locationData.location[0].name}`;
+
+      const nowRes = await fetch(`https://devapi.qweather.com/v7/weather/now?location=${locationId}&key=cdbc8afd371d4140bf33e52793fc9530`);
+      const nowData = await nowRes.json();
+
+      const weather = nowData.now.text;
+      const temp = parseFloat(nowData.now.temp);
+      const wind = parseFloat(nowData.now.windScale);
+      const pressure = parseFloat(nowData.now.pressure);
+
+      locationElem.innerText = `📍 位置：${locationName}`;
+      weatherElem.innerText = `🌤 天气：${weather}`;
+      tempElem.innerText = `🌡 温度：${temp}℃`;
+      windElem.innerText = `💨 风力：${wind}级`;
+      pressureElem.innerText = `🔽 气压：${pressure} hPa`;
+
+      let suggestion = '❌ 今日不适宜钓鱼';
+      let method = '';
+      if (temp >= 15 && temp <= 28 && wind <= 3 && pressure >= 1005) {
+        suggestion = '✅ 今日适宜钓鱼';
+        method = temp >= 22 ? '🎈 推荐钓浮' : '🎯 推荐钓底';
+      }
+
+      adviceElem.innerText = `${suggestion}
+${method}
+${getFishingTimeSuggestion(temp, weather)}`;
+      dressIndexElem.innerText = getDressSuggestion(temp, weather);
+
+      const forecastRes = await fetch(`https://devapi.qweather.com/v7/weather/3d?location=${locationId}&key=cdbc8afd371d4140bf33e52793fc9530`);
+      const forecastData = await forecastRes.json();
+
+      let forecastHTML = '';
+      forecastData.daily.slice(0, 3).forEach(day => {
+        const date = day.fxDate;
+        const high = parseFloat(day.tempMax);
+        const low = parseFloat(day.tempMin);
+        const wind = parseFloat(day.windScaleDay);
+        const textDay = day.textDay;
+        const icon = weatherIcons[textDay] || '';
+        const fishable = (high >= 15 && high <= 28 && wind <= 3);
+        const method = high >= 22 ? '🎈 钓浮' : '🎯 钓底';
+        const timeTip = getFishingTimeSuggestion(high, textDay);
+        const dress = getDressSuggestion(high, textDay);
+        forecastHTML += `<div class="forecast-day">
+          <p>📅 ${date}：${fishable ? '✅ 适宜' : '❌ 不适宜'}，${method}</p>
+          <p>🌡 ${low}~${high}℃，💨 风${wind}级，${icon} ${textDay}</p>
+          <p>🕒 ${timeTip}</p>
+          <p>👗 ${dress}</p>
+        </div>`;
+      });
+
+      forecastContent.innerHTML = forecastHTML;
+    }, () => {
+      adviceElem.innerText = '⚠️ 无法获取定位信息';
+    });
+  } catch (error) {
+    adviceElem.innerText = '⚠️ 获取天气失败，请稍后再试';
+  }
+}
+
+getWeather();
+function toggleContent(button) {
+  const content = button.parentElement.nextElementSibling;
+  const isVisible = content.style.display === 'block';
+  content.style.display = isVisible ? 'none' : 'block';
+  button.innerText = isVisible ? '展开' : '收起';
+}
+</script>
+</body>
+</html>
